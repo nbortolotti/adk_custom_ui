@@ -1,0 +1,14 @@
+[project]
+name = "adk-custom-ui-ws"
+version = "0.1.0"
+description = "A monorepo for ADK custom UI explorations"
+requires-python = ">=3.12"
+readme = "README.md"
+dependencies = []
+
+[tool.uv.member]
+# Note: we use 'uv project' workspaces for local development if needed
+# but each app is currently independent in its own folder.
+
+[tool.uv.workspace]
+members = ["apps/*"]

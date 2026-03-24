@@ -1,0 +1,23 @@
+# --- Environments ---
+.venv/
+env/
+venv/
+node_modules/
+dist/
+.angular/
+
+# --- Secrets & Config ---
+.env
+*.local
+.adk/
+
+# --- System & IDE ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
