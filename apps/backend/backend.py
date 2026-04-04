@@ -24,12 +24,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from agents.class_details_agent.agent import root_agent
+from agents.class_details_agent.agent import root_agent as class_details_agent
+from agents.learning_coach_agent.agent import root_agent as learning_coach_agent
 
 session_service = InMemorySessionService()
 runner = Runner(
-    agent=root_agent,
+    agent=class_details_agent,
     app_name="class_details_app",
+    session_service=session_service,
+    auto_create_session=True
+)
+
+learning_coach_runner = Runner(
+    agent=learning_coach_agent,
+    app_name="learning_coach_app",
     session_service=session_service,
     auto_create_session=True
 )
@@ -83,6 +91,46 @@ async def chat(request: ChatRequest):
         return {"response": output_text or "No se pudo generar una respuesta."}
     except Exception as e:
         print(f"Error in chat endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/learning_coach/chat")
+async def learning_coach_chat(request: ChatRequest):
+    try:
+        # Ensure session exists in the backend for learning coach
+        session = await session_service.get_session(
+            app_name="learning_coach_app",
+            user_id=request.user_id,
+            session_id=request.session_id
+        )
+        if session is None:
+            await session_service.create_session(
+                app_name="learning_coach_app",
+                user_id=request.user_id,
+                session_id=request.session_id
+            )
+
+        # Execute agent asynchronously
+        content_msg = Content(
+            role="user",
+            parts=[Part(text=request.message)]
+        )
+        
+        events = learning_coach_runner.run_async(
+            new_message=content_msg,
+            user_id=request.user_id,
+            session_id=request.session_id
+        )
+        
+        output_text = ""
+        async for event in events:
+            if getattr(event, "content", None) and event.content.parts:
+                for part in event.content.parts:
+                    if getattr(part, "text", None):
+                        output_text += part.text
+        
+        return {"response": output_text or "No response found."}
+    except Exception as e:
+        print(f"Error in learning_coach_chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

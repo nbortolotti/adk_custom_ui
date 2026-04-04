@@ -6,9 +6,9 @@ requires-python = ">=3.12"
 readme = "README.md"
 dependencies = []
 
-[tool.uv.member]
 # Note: we use 'uv project' workspaces for local development if needed
 # but each app is currently independent in its own folder.
 
 [tool.uv.workspace]
-members = ["apps/*"]
+members = ["apps/backend", "apps/frontend"]
+exclude = ["apps/frontendangular"]
