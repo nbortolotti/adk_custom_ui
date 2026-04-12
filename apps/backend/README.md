@@ -9,8 +9,11 @@ uv run backend.py
 ## Run the agent
 uv run adk run <agent_directory>
 
-
 ## Run the agents with UI
 
 uv run adk web --port 8000
+
+from agents folder:
+
+uv run adk web .
 
