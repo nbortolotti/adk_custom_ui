@@ -21,3 +21,6 @@ dist/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# --- Git Tutor Agent ---
+apps/backend/tmp_repo_*
