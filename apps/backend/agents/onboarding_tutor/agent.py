@@ -1,79 +1,81 @@
-import pathlib
-from typing import List
+import json
 from google.adk import Agent
-from google.adk.skills import load_skill_from_dir
-from google.adk.tools import skill_toolset
+from google.adk.tools.skill_toolset import SkillToolset
+from google.adk.skills.models import Skill, Frontmatter
 
-# 1. Definition of ADK Skills (Tools)
-# These will be registered as additional tools in the SkillToolset
-# and activated when the onboarding_tutor_skill is loaded.
-def get_team_content(team_name: str) -> str:
-    """Fetches specific documentation for the engineering team."""
-    docs = {
-        "backend": "Stack: Python/FastAPI. Repo: github.com/org/main-api. CI/CD: Jenkins.",
-        "frontend": "Stack: React/TypeScript. Design System: Tailwind. Repo: github.com/org/ui-kit.",
-        "devops": "Infrastructure: AWS (Terraform). Monitoring: Datadog & Sentry."
-    }
-    return docs.get(team_name.lower(), "General Tech Docs: Check the Notion 'Engineering' workspace.")
-
-def manage_onboarding_calendar(action: str, activity: str = "") -> str:
-    """Manages onboarding sessions.
-    
-    Args:
-        action: The action to perform. Choose from 'query' (to check a specific session), 'list' (to see all scheduled sessions), or 'add' (to schedule a new activity).
-        activity: The name of the session (required for 'query' and 'add'). Examples: 'security training', 'architecture overview'.
-    """
-    onboarding_schedule = {
-        "security training": "Monday at 10:00 AM",
-        "architecture overview": "Tuesday at 2:00 PM",
-        "hr sync": "Wednesday at 9:00 AM"
-    }
-    action_low = action.lower()
-    if action_low == "query":
-        if not activity:
-            return "Please provide the name of the activity you want to query."
-        time = onboarding_schedule.get(activity.lower())
-        if time:
-            return f"The session '{activity}' is scheduled for {time}."
-        return f"I couldn't find a session named '{activity}'. Try 'list' to see all sessions."
-    elif action_low == "list":
-        schedule_str = "\n".join([f"- {act}: {time}" for act, time in onboarding_schedule.items()])
-        return f"Current Onboarding Schedule:\n{schedule_str}"
-    
-    return f"Activity '{activity}' has been successfully added to your first-week calendar."
-
-def generate_check_in_questions(topic: str) -> List[str]:
-    """Generates generic comprehension questions about onboarding materials."""
-    return [
-        f"Based on the {topic} docs, what are the first 3 steps to set up the local env?",
-        f"Who is the point of contact for {topic} blockers?",
-        f"Where is the production deployment checklist for {topic} located?"
+# Define a tool to retrieve documentation resources
+def get_onboarding_resources() -> str:
+    """Returns a list of available documentation and resources for technical onboarding."""
+    resources = [
+        {
+            "id": "eng_handbook",
+            "title": "Google Engineering Practices",
+            "description": "The official guide to code reviews and engineering standards used at Google.",
+            "url": "https://google.github.io/eng-practices/",
+            "tags": ["Standard", "Process"]
+        },
+        {
+            "id": "a2ui_spec",
+            "title": "A2UI Specification",
+            "description": "Technical specification for the Agent-to-User Interface protocol.",
+            "url": "https://a2ui.org/",
+            "tags": ["SDK", "UI"]
+        },
+        {
+            "id": "design_system",
+            "title": "Corporate Design System",
+            "description": "Material 3 design guidelines and components.",
+            "url": "https://m3.material.io/",
+            "tags": ["Design", "UX"]
+        }
     ]
+    return json.dumps(resources)
 
-# 2. Skill Loading
-# Load the skill from the local 'skills' directory.
-onboarding_skill = load_skill_from_dir(
-    pathlib.Path(__file__).parent / "_skills" / "onboarding-tutor-skill"
-)
-
-# 3. Toolset Configuration
-# We use SkillToolset to manage the skill and its associated tools.
-my_skill_toolset = skill_toolset.SkillToolset(
-    skills=[onboarding_skill],
-    additional_tools=[get_team_content, manage_onboarding_calendar, generate_check_in_questions]
-)
-
-# 4. Agent Configuration
-root_agent = Agent(
-    model='gemini-2.5-flash',
-    name='onboarding_tutor_agent',
-    description="Tech Onboarding Assistant that uses specialized skills to help new hires.",
-    instruction=(
-        "You are the Tech Onboarding Assistant. Your goal is to help new hires integrate quickly. "
-        "You have access to specialized skills. You MUST use the `list_skills` and `load_skill` tools "
-        "to discover and understand your capabilities. "
-        "Once you load a skill, follow its instructions exactly and use the newly available tools to help the user. "
-        "Always be welcoming and helpful to new members of the company."
+# Define Skill with the new Frontmatter requirement for v0.12+
+onboarding_tutor_skill = Skill(
+    frontmatter=Frontmatter(
+        name="onboarding-tutor-skill",
+        description="Provides guidance and documentation for new technical hires."
     ),
-    tools=[my_skill_toolset],
+    instructions=(
+        "You are a Technical Onboarding Tutor. Your goal is to help new engineers settle in.\n"
+        "1. When asked for documentation or guides, ALWAYS use the `get_onboarding_resources` tool.\n"
+        "2. Generate A2UI `DocCard` components with the retrieved data.\n"
+        "3. Welcome new hires and help them find what they need."
+    )
+)
+
+my_skill_toolset = SkillToolset(skills=[onboarding_tutor_skill])
+
+# Create Agent
+root_agent = Agent(
+    name="onboarding_tutor_agent",
+    model="gemini-2.0-flash",
+    instruction=(
+        "You are a helpful Technical Onboarding Tutor.\n"
+        "You MUST initialize by using `load_skill` for 'onboarding-tutor-skill'.\n\n"
+        "### Workflow\n"
+        "- Call `get_onboarding_resources` when documentation is requested.\n\n"
+        "### A2UI format\n"
+        "ALWAYS use MIME `application/json+a2ui` with the `createSurface` pattern for UI.\n"
+        "```json\n"
+        "{\n"
+        "  \"createSurface\": {\n"
+        "    \"surfaceId\": \"main\",\n"
+        "    \"components\": [\n"
+        "      {\n"
+        "        \"type\": \"DocCard\",\n"
+        "        \"props\": {\n"
+        "          \"title\": \"Title\",\n"
+        "          \"description\": \"Desc\",\n"
+        "          \"url\": \"URL\",\n"
+        "          \"tags\": [\"Tag\"]\n"
+        "        }\n"
+        "      }\n"
+        "    ]\n"
+        "  }\n"
+        "}\n"
+        "```"
+    ),
+    tools=[my_skill_toolset, get_onboarding_resources],
 )
