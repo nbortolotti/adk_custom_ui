@@ -33,6 +33,7 @@ from agents.class_details_agent.agent import root_agent as class_details_agent
 from agents.learning_coach_agent.agent import root_agent as learning_coach_agent
 from agents.git_tutor_agent.agent import root_agent as git_tutor_agent
 from agents.onboarding_tutor.agent import root_agent as onboarding_tutor_agent
+from agents.architectural_time_traveler.agent import root_agent as architectural_time_traveler_agent
 
 session_service = InMemorySessionService()
 
@@ -49,6 +50,7 @@ class_runner = create_runner(class_details_agent, "class_details_app")
 learning_coach_runner = create_runner(learning_coach_agent, "learning_coach_app")
 git_tutor_runner = create_runner(git_tutor_agent, "git_tutor_app")
 onboarding_tutor_runner = create_runner(onboarding_tutor_agent, "onboarding_tutor_app")
+architectural_time_traveler_runner = create_runner(architectural_time_traveler_agent, "architectural_time_traveler_app")
 
 # --- Data Models ---
 class ChatRequest(BaseModel):
@@ -113,6 +115,10 @@ async def git_tutor_chat(request: ChatRequest):
 @app.post("/onboarding_tutor/chat")
 async def onboarding_tutor_chat(request: ChatRequest):
     return await process_agent_chat(onboarding_tutor_runner, request)
+
+@app.post("/architectural_time_traveler/chat")
+async def architectural_time_traveler_chat(request: ChatRequest):
+    return await process_agent_chat(architectural_time_traveler_runner, request)
 
 if __name__ == "__main__":
     import uvicorn
